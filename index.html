@@ -3,456 +3,1051 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Voice Assistant - Working Version</title>
+    <title>Talking Voice Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Simple animations */
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.1); opacity: 0.8; }
+        /* YouTube-style live transcript */
+        .live-transcript {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: 500;
+            text-align: center;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            position: relative;
+            overflow: hidden;
         }
-        
-        .listening {
-            animation: pulse 1.5s infinite;
-            background: linear-gradient(45deg, #ff4444, #44ff44, #4444ff);
-            background-size: 200% 200%;
-            animation: pulse 1.5s infinite, gradient 3s ease infinite;
+
+        .live-transcript::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s;
         }
-        
-        @keyframes gradient {
+
+        .live-transcript.speaking::before {
+            left: 100%;
+        }
+
+        /* Speaking animation for assistant */
+        .assistant-speaking {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4) !important;
+            background-size: 400% 400% !important;
+            animation: speaking-gradient 2s ease infinite !important;
+        }
+
+        @keyframes speaking-gradient {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
             100% { background-position: 0% 50%; }
         }
-        
-        .wave-bar {
-            display: inline-block;
-            width: 3px;
-            height: 15px;
-            background: #4f46e5;
-            margin: 0 1px;
-            animation: wave 1s infinite ease-in-out;
+
+        /* Pulse animation for microphone */
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(59, 130, 246, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
         }
         
-        .wave-bar:nth-child(2) { animation-delay: -0.9s; }
-        .wave-bar:nth-child(3) { animation-delay: -0.8s; }
-        .wave-bar:nth-child(4) { animation-delay: -0.7s; }
-        .wave-bar:nth-child(5) { animation-delay: -0.6s; }
+        .listening {
+            animation: pulse 2s infinite;
+            background: linear-gradient(45deg, #ff4444, #44ff44, #4444ff) !important;
+            background-size: 200% 200% !important;
+            animation: pulse 2s infinite, gradientShift 3s ease infinite !important;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        /* Wave bars */
+        .wave-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            height: 30px;
+        }
+        
+        .wave-bar {
+            width: 4px;
+            background: #3b82f6;
+            border-radius: 2px;
+            animation: wave 1.2s infinite ease-in-out;
+        }
+        
+        .wave-bar:nth-child(1) { animation-delay: -1.2s; height: 10px; }
+        .wave-bar:nth-child(2) { animation-delay: -1.1s; height: 20px; }
+        .wave-bar:nth-child(3) { animation-delay: -1.0s; height: 30px; }
+        .wave-bar:nth-child(4) { animation-delay: -0.9s; height: 20px; }
+        .wave-bar:nth-child(5) { animation-delay: -0.8s; height: 10px; }
         
         @keyframes wave {
-            0%, 40%, 100% { transform: scaleY(0.4); }
-            20% { transform: scaleY(1.0); }
+            0%, 40%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+            20% { transform: scaleY(1.0); opacity: 1; }
+        }
+
+        /* Text input styling */
+        .text-input-container {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 15px;
+            padding: 20px;
+            color: white;
+        }
+
+        .text-input {
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.3);
+            color: white;
+            border-radius: 10px;
+            padding: 12px 16px;
+            font-size: 16px;
+            width: 100%;
+            backdrop-filter: blur(10px);
+        }
+
+        .text-input::placeholder {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: rgba(255,255,255,0.6);
+            box-shadow: 0 0 20px rgba(255,255,255,0.3);
+        }
+
+        /* Footer commands grid */
+        .command-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+        }
+
+        .command-category {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 15px;
+            color: white;
+        }
+
+        .command-item {
+            background: rgba(255,255,255,0.1);
+            padding: 8px 12px;
+            border-radius: 8px;
+            margin: 5px 0;
+            font-size: 14px;
         }
     </style>
 </head>
 <body class="min-h-screen bg-gray-100" id="body">
-    <div class="container mx-auto px-4 py-6 max-w-4xl">
+    <div class="container mx-auto px-4 py-6 max-w-6xl">
         <!-- Header -->
         <div class="text-center mb-6">
             <h1 class="text-3xl md:text-4xl font-bold text-gray-800 mb-2">
-                🎤 Voice Assistant
+                🤖 Talking Voice Assistant
             </h1>
-            <p class="text-gray-600">Bolo aur dekho magic!</p>
+            <p class="text-gray-600">Main tumhare saath baat kar sakta hun! Voice mein reply deta hun!</p>
         </div>
 
-        <!-- Browser Support Check -->
-        <div id="browserCheck" class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-4 hidden">
-            <strong>Warning:</strong> Speech recognition works best in Chrome browser. Other browsers may have issues.
+        <!-- Voice Volume Control -->
+        <div class="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-3 rounded mb-4">
+            <div class="flex items-center justify-between">
+                <span><strong>🔊 Assistant Volume:</strong></span>
+                <div class="flex items-center gap-3">
+                    <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="0.8" class="w-32">
+                    <span id="volumeDisplay">80%</span>
+                    <button id="muteToggle" class="px-3 py-1 bg-yellow-600 text-white rounded hover:bg-yellow-700">🔊</button>
+                </div>
+            </div>
         </div>
 
-        <!-- Main Control Panel -->
+        <!-- Live Transcript - YouTube Style -->
+        <div class="mb-6">
+            <h2 class="text-xl font-bold mb-3 text-gray-800">🎯 Live Speech</h2>
+            <div id="liveTranscript" class="live-transcript">
+                <div id="transcriptText">Click microphone and speak something...</div>
+            </div>
+        </div>
+
+        <!-- Assistant Response -->
+        <div class="mb-6">
+            <h2 class="text-xl font-bold mb-3 text-gray-800">🤖 Assistant Response</h2>
+            <div id="assistantResponse" class="live-transcript">
+                <div id="responseText">Main ready hun! Kuch pucho...</div>
+            </div>
+        </div>
+
+        <!-- Voice Controls -->
         <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">🎤 Voice Control</h2>
+            
             <!-- Microphone Button -->
             <div class="text-center mb-6">
-                <button id="micButton" class="w-24 h-24 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl transition-all duration-300 mx-auto block">
+                <button id="micButton" class="w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl transition-all duration-300 mx-auto block">
                     🎤
                 </button>
-                <div id="statusText" class="mt-3 text-lg font-semibold text-gray-700">
-                    Click microphone to start
+                <div id="voiceStatus" class="mt-3 text-lg font-semibold text-gray-700">
+                    Ready to listen
                 </div>
-                <!-- Wave animation -->
-                <div id="waveAnimation" class="mt-3 hidden">
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
-                    <div class="wave-bar"></div>
+                
+                <!-- Wave Animation -->
+                <div id="waveContainer" class="mt-4 hidden">
+                    <div class="wave-container">
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                        <div class="wave-bar"></div>
+                    </div>
                 </div>
             </div>
 
-            <!-- Control Buttons -->
-            <div class="flex justify-center gap-3 mb-6">
-                <button id="startBtn" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
-                    ▶️ Start
+            <!-- Voice Control Buttons -->
+            <div class="flex justify-center gap-3 mb-4">
+                <button id="startVoice" class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors">
+                    ▶️ Start Voice
                 </button>
-                <button id="stopBtn" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" disabled>
-                    ⏹️ Stop
+                <button id="stopVoice" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors" disabled>
+                    ⏹️ Stop Voice
                 </button>
-                <button id="testBtn" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors">
-                    🧪 Test
+                <button id="testSpeech" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors">
+                    🗣️ Test Speech
                 </button>
-            </div>
-
-            <!-- Current Speech -->
-            <div class="bg-gray-50 rounded-lg p-4 mb-4">
-                <h3 class="font-semibold mb-2">What you said:</h3>
-                <div id="speechText" class="text-gray-600 min-h-[30px] italic">
-                    Nothing yet... speak something!
-                </div>
             </div>
 
             <!-- Debug Info -->
-            <div class="bg-blue-50 rounded-lg p-4 mb-4">
-                <h3 class="font-semibold mb-2">Debug Info:</h3>
-                <div id="debugInfo" class="text-sm text-gray-600">
-                    Checking browser compatibility...
-                </div>
+            <div class="bg-blue-50 rounded-lg p-3 text-sm">
+                <strong>Status:</strong> <span id="debugStatus">Checking browser support...</span>
+            </div>
+        </div>
+
+        <!-- Text Input Alternative -->
+        <div class="text-input-container mb-6">
+            <h2 class="text-xl font-bold mb-4">⌨️ Text Commands</h2>
+            <div class="flex gap-3">
+                <input 
+                    type="text" 
+                    id="textInput" 
+                    class="text-input flex-1" 
+                    placeholder="Type command here... (e.g., tell me a joke, what's the weather)"
+                />
+                <button id="sendText" class="px-6 py-3 bg-white bg-opacity-20 text-white rounded-lg hover:bg-opacity-30 transition-colors font-semibold">
+                    Send
+                </button>
             </div>
         </div>
 
         <!-- Results -->
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <h2 class="text-xl font-bold mb-4">Actions Performed</h2>
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-gray-800">📋 Action Results</h2>
             <div id="results" class="space-y-3">
-                <div class="text-gray-500 italic text-center py-4">
-                    No actions yet. Try these commands:
-                    <br><br>
-                    <div class="text-sm space-y-1">
-                        <div>🔍 "search for cats"</div>
-                        <div>🌐 "open youtube"</div>
-                        <div>🎨 "change background"</div>
-                        <div>⏰ "what time is it"</div>
-                        <div>💬 "message ritika hello"</div>
-                    </div>
+                <div class="text-gray-500 italic text-center py-6">
+                    <div class="text-lg mb-3">Ready for commands!</div>
+                    <div class="text-sm">Try saying "Hello" or "What can you do?"</div>
                 </div>
             </div>
+            <button id="clearResults" class="mt-4 px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors">
+                🗑️ Clear Results
+            </button>
         </div>
     </div>
 
+    <!-- Footer - All Available Commands -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4 max-w-6xl">
+            <h2 class="text-2xl font-bold text-center mb-6">🚀 All Available Commands</h2>
+            <div class="command-grid">
+                
+                <!-- Basic Commands -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">🗣️ Basic Chat</h3>
+                    <div class="command-item">"Hello" - Greet the assistant</div>
+                    <div class="command-item">"How are you?" - Ask about status</div>
+                    <div class="command-item">"What can you do?" - List capabilities</div>
+                    <div class="command-item">"Tell me a joke" - Get a random joke</div>
+                    <div class="command-item">"Thank you" - Express gratitude</div>
+                </div>
+
+                <!-- Search & Web -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">🔍 Search & Web</h3>
+                    <div class="command-item">"Search for cats" - Google search</div>
+                    <div class="command-item">"Open YouTube" - Open website</div>
+                    <div class="command-item">"Open Google/Facebook/Instagram" - Social sites</div>
+                    <div class="command-item">"Find information about AI" - Research</div>
+                    <div class="command-item">"Show me news" - Latest news</div>
+                </div>
+
+                <!-- Time & Date -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">⏰ Time & Date</h3>
+                    <div class="command-item">"What time is it?" - Current time</div>
+                    <div class="command-item">"What's today's date?" - Current date</div>
+                    <div class="command-item">"What day is it?" - Day of week</div>
+                    <div class="command-item">"Set a timer for 5 minutes" - Timer</div>
+                </div>
+
+                <!-- Messages & Communication -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">💬 Messages</h3>
+                    <div class="command-item">"Message Ritika hello" - WhatsApp message</div>
+                    <div class="command-item">"Send email to John" - Email draft</div>
+                    <div class="command-item">"Call mom" - Phone call</div>
+                    <div class="command-item">"Write note about meeting" - Notes</div>
+                </div>
+
+                <!-- Entertainment -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">🎵 Entertainment</h3>
+                    <div class="command-item">"Play music" - Music player</div>
+                    <div class="command-item">"Tell me a story" - Short story</div>
+                    <div class="command-item">"Sing a song" - Assistant singing</div>
+                    <div class="command-item">"What's trending?" - Popular content</div>
+                </div>
+
+                <!-- Smart Home -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">🏠 Smart Home</h3>
+                    <div class="command-item">"Turn on lights" - Light control</div>
+                    <div class="command-item">"Turn off fan" - Fan control</div>
+                    <div class="command-item">"Set temperature to 22" - AC control</div>
+                    <div class="command-item">"Lock the door" - Security</div>
+                </div>
+
+                <!-- Productivity -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">📊 Productivity</h3>
+                    <div class="command-item">"Add to shopping list" - Lists</div>
+                    <div class="command-item">"Remind me to call doctor" - Reminders</div>
+                    <div class="command-item">"Schedule meeting" - Calendar</div>
+                    <div class="command-item">"Calculate 25 * 8" - Math</div>
+                </div>
+
+                <!-- System Control -->
+                <div class="command-category">
+                    <h3 class="font-bold text-lg mb-3">⚙️ System</h3>
+                    <div class="command-item">"Change background" - UI control</div>
+                    <div class="command-item">"Increase volume" - Audio control</div>
+                    <div class="command-item">"Mute assistant" - Voice control</div>
+                    <div class="command-item">"Stop listening" - Stop command</div>
+                </div>
+
+            </div>
+            
+            <div class="text-center mt-6 text-gray-400">
+                <p>💡 <strong>Pro Tip:</strong> Speak clearly and wait for the response. Assistant can understand Hindi and English mixed commands!</p>
+            </div>
+        </div>
+    </footer>
+
     <script>
-        // Global variables
+        // Global Variables
         let recognition = null;
+        let synthesis = window.speechSynthesis;
         let isListening = false;
+        let isSpeaking = false;
         let isSupported = false;
+        let currentTranscript = '';
+        let assistantVolume = 0.8;
+        let isMuted = false;
 
-        // DOM elements
+        // DOM Elements
         const micButton = document.getElementById('micButton');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const testBtn = document.getElementById('testBtn');
-        const statusText = document.getElementById('statusText');
-        const speechText = document.getElementById('speechText');
-        const debugInfo = document.getElementById('debugInfo');
+        const startVoice = document.getElementById('startVoice');
+        const stopVoice = document.getElementById('stopVoice');
+        const testSpeech = document.getElementById('testSpeech');
+        const voiceStatus = document.getElementById('voiceStatus');
+        const waveContainer = document.getElementById('waveContainer');
+        const liveTranscript = document.getElementById('liveTranscript');
+        const transcriptText = document.getElementById('transcriptText');
+        const assistantResponse = document.getElementById('assistantResponse');
+        const responseText = document.getElementById('responseText');
+        const textInput = document.getElementById('textInput');
+        const sendText = document.getElementById('sendText');
         const results = document.getElementById('results');
-        const browserCheck = document.getElementById('browserCheck');
-        const waveAnimation = document.getElementById('waveAnimation');
+        const clearResults = document.getElementById('clearResults');
+        const debugStatus = document.getElementById('debugStatus');
         const body = document.getElementById('body');
+        const volumeControl = document.getElementById('volumeControl');
+        const volumeDisplay = document.getElementById('volumeDisplay');
+        const muteToggle = document.getElementById('muteToggle');
 
-        // Check browser support immediately
+        // Voice Responses Database
+        const responses = {
+            greetings: [
+                "Hello! Main tumhara voice assistant hun. Kya madad kar sakta hun?",
+                "Namaste! Main ready hun tumhare commands sunne ke liye!",
+                "Hi there! Bolo kya karna hai?"
+            ],
+            
+            capabilities: [
+                "Main bohot kuch kar sakta hun! Websites khol sakta hun, search kar sakta hun, time bata sakta hun, messages bhej sakta hun aur bhi bohot kuch!",
+                "Dekho main search kar sakta hun, YouTube khol sakta hun, time bata sakta hun, smart home control kar sakta hun, jokes suna sakta hun aur bhi bohot kuch!"
+            ],
+            
+            jokes: [
+                "Why don't scientists trust atoms? Because they make up everything! Haha!",
+                "Ek programmer coffee shop mein gaya aur bola: Java please! Barista confused ho gaya!",
+                "What's the best thing about Switzerland? I don't know, but the flag is a big plus!"
+            ],
+            
+            compliments: [
+                "Shukriya! Tumhare liye kuch bhi!",
+                "Thank you! Main hamesha tumhari madad ke liye hun!",
+                "Aww, tumhe bhi thanks! Main khush hun madad kar paya!"
+            ],
+            
+            time_responses: [
+                "Mission complete! Time bata diya!",
+                "Ho gaya! Dekho kitna time hai!",
+                "Time check complete!"
+            ],
+            
+            search_responses: [
+                "Mission complete! Search kar diya tumhare liye!",
+                "Ho gaya! Dekho kya mila!",
+                "Search complete! Results dekho!"
+            ],
+            
+            website_responses: [
+                "Mission complete! Website khol diya!",
+                "Ho gaya! Enjoy karo!",
+                "Website successfully opened!"
+            ],
+            
+            background_responses: [
+                "Tadaa! Background change ho gaya! Kaisa laga?",
+                "Mission complete! Naya look kaisa hai?",
+                "Background changed! Looking good!"
+            ],
+            
+            message_responses: [
+                "Mission complete! Message ready kar diya WhatsApp mein!",
+                "Ho gaya! WhatsApp khul gaya message ke saath!",
+                "Message successfully prepared!"
+            ],
+            
+            smart_home_responses: [
+                "Smart home device control complete!",
+                "Mission accomplished! Device control ho gaya!",
+                "Done! Smart home command executed!"
+            ],
+            
+            unknown: [
+                "Sorry yaar, main ye command samajh nahi paya. Kuch aur try karo!",
+                "Hmm, ye command mere database mein nahi hai. Different wording try karo!",
+                "Main confused hun is command se. Help ke liye 'what can you do' bolo!"
+            ]
+        };
+
+        // Text-to-Speech Function
+        function speak(text, responseType = 'default') {
+            if (isMuted) return;
+            
+            // Cancel any ongoing speech
+            synthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.volume = assistantVolume;
+            utterance.rate = 0.9;
+            utterance.pitch = 1.1;
+            
+            // Try to use a good voice
+            const voices = synthesis.getVoices();
+            const englishVoice = voices.find(voice => 
+                voice.lang.includes('en') && voice.name.includes('Female')
+            ) || voices.find(voice => voice.lang.includes('en')) || voices[0];
+            
+            if (englishVoice) {
+                utterance.voice = englishVoice;
+            }
+
+            utterance.onstart = () => {
+                isSpeaking = true;
+                responseText.textContent = text;
+                assistantResponse.classList.add('assistant-speaking');
+                addResult(`🗣️ Assistant: "${text}"`, 'assistant');
+            };
+
+            utterance.onend = () => {
+                isSpeaking = false;
+                assistantResponse.classList.remove('assistant-speaking');
+            };
+
+            utterance.onerror = (error) => {
+                console.error('Speech error:', error);
+                isSpeaking = false;
+                assistantResponse.classList.remove('assistant-speaking');
+            };
+
+            synthesis.speak(utterance);
+        }
+
+        // Get Random Response
+        function getRandomResponse(category) {
+            const responseArray = responses[category] || responses.unknown;
+            return responseArray[Math.floor(Math.random() * responseArray.length)];
+        }
+
+        // Check Browser Support
         function checkBrowserSupport() {
-            console.log('Checking browser support...');
+            console.log('🔍 Checking browser support...');
             
             if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
                 isSupported = true;
-                debugInfo.textContent = '✅ Speech Recognition supported!';
-                debugInfo.className = 'text-sm text-green-600';
+                debugStatus.textContent = '✅ Speech Recognition supported!';
+                debugStatus.className = 'text-green-600';
+                console.log('✅ Browser supports speech recognition');
                 return true;
             } else {
                 isSupported = false;
-                debugInfo.textContent = '❌ Speech Recognition NOT supported in this browser';
-                debugInfo.className = 'text-sm text-red-600';
-                browserCheck.classList.remove('hidden');
+                debugStatus.textContent = '❌ Speech Recognition NOT supported';
+                debugStatus.className = 'text-red-600';
+                console.log('❌ Browser does not support speech recognition');
                 return false;
             }
         }
 
-        // Initialize speech recognition
+        // Initialize Speech Recognition
         function initSpeechRecognition() {
-            if (!isSupported) {
-                addResult('❌ Browser does not support speech recognition', 'error');
-                return false;
-            }
+            if (!isSupported) return false;
 
             try {
-                // Get the right constructor
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 recognition = new SpeechRecognition();
 
-                // Basic settings
-                recognition.continuous = false; // Changed to false for better reliability
+                recognition.continuous = true;
                 recognition.interimResults = true;
                 recognition.lang = 'en-US';
                 recognition.maxAlternatives = 1;
 
-                // Event listeners
-                recognition.onstart = function() {
-                    console.log('Recognition started');
+                recognition.onstart = () => {
+                    console.log('🎤 Speech recognition started');
                     isListening = true;
-                    updateUI();
-                    addResult('🎤 Started listening...', 'info');
+                    updateVoiceUI();
+                    transcriptText.textContent = 'Listening... speak now!';
+                    liveTranscript.classList.add('speaking');
                 };
 
-                recognition.onresult = function(event) {
-                    console.log('Recognition result:', event);
-                    
-                    let finalTranscript = '';
-                    let interimTranscript = '';
+                recognition.onresult = (event) => {
+                    let interim = '';
+                    let final = '';
 
                     for (let i = event.resultIndex; i < event.results.length; i++) {
                         const transcript = event.results[i][0].transcript;
                         if (event.results[i].isFinal) {
-                            finalTranscript += transcript;
+                            final += transcript;
                         } else {
-                            interimTranscript += transcript;
+                            interim += transcript;
                         }
                     }
 
-                    // Update display
-                    const currentText = finalTranscript || interimTranscript;
-                    speechText.textContent = currentText || 'Listening...';
-                    speechText.className = 'text-gray-800 min-h-[30px]';
+                    const displayText = final + interim;
+                    if (displayText.trim()) {
+                        transcriptText.textContent = displayText;
+                        liveTranscript.classList.add('speaking');
+                    }
 
-                    // Process final result
-                    if (finalTranscript.trim()) {
-                        console.log('Final transcript:', finalTranscript);
-                        processCommand(finalTranscript.trim());
+                    if (final.trim()) {
+                        console.log('📝 Final transcript:', final);
+                        processCommand(final.trim());
+                        currentTranscript = final.trim();
                     }
                 };
 
-                recognition.onerror = function(event) {
-                    console.error('Recognition error:', event.error);
-                    let errorMsg = 'Recognition error: ';
+                recognition.onerror = (event) => {
+                    console.error('❌ Recognition error:', event.error);
+                    let errorMsg = '';
                     
                     switch(event.error) {
                         case 'no-speech':
-                            errorMsg += 'No speech detected. Try again.';
+                            errorMsg = 'Koi awaaz nahi suni. Dobara try karo.';
                             break;
                         case 'audio-capture':
-                            errorMsg += 'No microphone found.';
+                            errorMsg = 'Microphone nahi mila.';
                             break;
                         case 'not-allowed':
-                            errorMsg += 'Microphone permission denied. Please allow microphone access.';
-                            break;
-                        case 'network':
-                            errorMsg += 'Network error occurred.';
+                            errorMsg = 'Microphone permission chahiye.';
                             break;
                         default:
-                            errorMsg += event.error;
+                            errorMsg = `Error: ${event.error}`;
                     }
                     
-                    addResult(errorMsg, 'error');
-                    isListening = false;
-                    updateUI();
+                    addResult(`❌ ${errorMsg}`, 'error');
+                    speak(errorMsg);
                 };
 
-                recognition.onend = function() {
-                    console.log('Recognition ended');
+                recognition.onend = () => {
+                    console.log('🛑 Speech recognition ended');
                     isListening = false;
-                    updateUI();
+                    updateVoiceUI();
+                    liveTranscript.classList.remove('speaking');
+                    
+                    if (currentTranscript) {
+                        transcriptText.textContent = `Last: "${currentTranscript}"`;
+                    } else {
+                        transcriptText.textContent = 'Click microphone to start...';
+                    }
                 };
 
-                debugInfo.textContent = '✅ Speech Recognition initialized successfully!';
-                debugInfo.className = 'text-sm text-green-600';
+                debugStatus.textContent = '✅ Speech Recognition ready!';
+                debugStatus.className = 'text-green-600';
                 return true;
 
             } catch (error) {
-                console.error('Error initializing recognition:', error);
-                debugInfo.textContent = '❌ Error initializing: ' + error.message;
-                debugInfo.className = 'text-sm text-red-600';
+                console.error('❌ Init error:', error);
+                debugStatus.textContent = `❌ Error: ${error.message}`;
+                debugStatus.className = 'text-red-600';
                 return false;
             }
         }
 
-        // Process voice commands
+        // Enhanced Command Processing
         function processCommand(command) {
             const cmd = command.toLowerCase().trim();
-            console.log('Processing command:', cmd);
+            console.log('🔄 Processing:', cmd);
             
-            addResult(`🗣️ You said: "${command}"`, 'speech');
+            addResult(`🗣️ You: "${command}"`, 'user');
 
-            // Search command
-            if (cmd.includes('search for') || cmd.includes('search')) {
-                const query = cmd.replace(/search\s+(for\s+)?/g, '').trim();
+            // Greetings
+            if (cmd.includes('hello') || cmd.includes('hi') || cmd.includes('hey') || cmd.includes('namaste')) {
+                const response = getRandomResponse('greetings');
+                speak(response);
+                return;
+            }
+
+            // How are you
+            if (cmd.includes('how are you') || cmd.includes('kaise ho') || cmd.includes('kaisa hai')) {
+                speak("Main bilkul theek hun! Ready to help! Tumhara kya haal hai?");
+                return;
+            }
+
+            // Capabilities
+            if (cmd.includes('what can you do') || cmd.includes('kya kar sakte ho') || cmd.includes('help')) {
+                const response = getRandomResponse('capabilities');
+                speak(response);
+                return;
+            }
+
+            // Jokes
+            if (cmd.includes('joke') || cmd.includes('funny') || cmd.includes('hasao')) {
+                const joke = getRandomResponse('jokes');
+                speak(joke);
+                return;
+            }
+
+            // Thank you
+            if (cmd.includes('thank') || cmd.includes('thanks') || cmd.includes('shukriya') || cmd.includes('dhanyawad')) {
+                const response = getRandomResponse('compliments');
+                speak(response);
+                return;
+            }
+
+            // Search commands
+            if (cmd.includes('search') || cmd.includes('find') || cmd.includes('look for')) {
+                let query = cmd.replace(/(search for|search|find|look for)/g, '').trim();
                 if (query) {
                     const url = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
                     window.open(url, '_blank');
-                    addResult(`🔍 Searching for: ${query}`, 'action');
+                    addResult(`🔍 Searched: "${query}"`, 'success');
+                    const response = getRandomResponse('search_responses');
+                    speak(response);
                 } else {
-                    addResult('❓ Search for what?', 'info');
+                    speak('Search ke liye kya find karna hai?');
                 }
+                return;
             }
-            // Open commands
-            else if (cmd.includes('open')) {
-                if (cmd.includes('youtube')) {
-                    window.open('https://youtube.com', '_blank');
-                    addResult('🎥 Opening YouTube', 'action');
-                } else if (cmd.includes('google')) {
-                    window.open('https://google.com', '_blank');
-                    addResult('🌐 Opening Google', 'action');
-                } else if (cmd.includes('whatsapp')) {
-                    window.open('https://web.whatsapp.com', '_blank');
-                    addResult('💬 Opening WhatsApp', 'action');
-                } else if (cmd.includes('facebook')) {
-                    window.open('https://facebook.com', '_blank');
-                    addResult('👥 Opening Facebook', 'action');
-                } else {
-                    addResult('❓ Open what? Try: YouTube, Google, WhatsApp, Facebook', 'info');
+
+            // Open websites
+            if (cmd.includes('open')) {
+                let opened = false;
+                const sites = {
+                    'youtube': 'https://youtube.com',
+                    'google': 'https://google.com',
+                    'whatsapp': 'https://web.whatsapp.com',
+                    'facebook': 'https://facebook.com',
+                    'instagram': 'https://instagram.com',
+                    'twitter': 'https://twitter.com',
+                    'linkedin': 'https://linkedin.com'
+                };
+
+                for (const [site, url] of Object.entries(sites)) {
+                    if (cmd.includes(site)) {
+                        window.open(url, '_blank');
+                        addResult(`🌐 Opened ${site.charAt(0).toUpperCase() + site.slice(1)}`, 'success');
+                        const response = getRandomResponse('website_responses');
+                        speak(response);
+                        opened = true;
+                        break;
+                    }
                 }
+
+                if (!opened) {
+                    speak('Konsa website kholna hai? YouTube, Google, Facebook, Instagram, WhatsApp?');
+                }
+                return;
             }
+
             // Background change
-            else if (cmd.includes('background') || cmd.includes('color')) {
+            if (cmd.includes('background') || cmd.includes('color') || cmd.includes('theme')) {
                 changeBackground();
-                addResult('🎨 Background changed!', 'action');
+                addResult('🎨 Background changed!', 'success');
+                const response = getRandomResponse('background_responses');
+                speak(response);
+                return;
             }
+
             // Time
-            else if (cmd.includes('time') || cmd.includes('what time')) {
+            if (cmd.includes('time') || cmd.includes('what time') || cmd.includes('kitna baje')) {
                 const now = new Date();
                 const timeStr = now.toLocaleTimeString();
-                addResult(`⏰ Current time: ${timeStr}`, 'info');
+                const dateStr = now.toLocaleDateString();
+                addResult(`⏰ Time: ${timeStr} | Date: ${dateStr}`, 'info');
+                speak(`Current time is ${timeStr}`);
+                return;
             }
-            // Message
-            else if (cmd.includes('message') || cmd.includes('send')) {
+
+            // Date
+            if (cmd.includes('date') || cmd.includes('today') || cmd.includes('aaj kya date')) {
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('en-US', { 
+                    weekday: 'long', 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+                addResult(`📅 Today: ${dateStr}`, 'info');
+                speak(`Today is ${dateStr}`);
+                return;
+            }
+
+            // Weather (mock)
+            if (cmd.includes('weather') || cmd.includes('mausam')) {
+                const temps = [18, 22, 25, 28, 30, 32];
+                const conditions = ['sunny', 'cloudy', 'partly cloudy', 'windy'];
+                const temp = temps[Math.floor(Math.random() * temps.length)];
+                const condition = conditions[Math.floor(Math.random() * conditions.length)];
+                
+                addResult(`🌤️ Weather: ${condition}, ${temp}°C`, 'info');
+                speak(`Today's weather is ${condition} with temperature around ${temp} degrees celsius`);
+                return;
+            }
+
+            // Music
+            if (cmd.includes('play music') || cmd.includes('music') || cmd.includes('song')) {
+                window.open('https://open.spotify.com', '_blank');
+                addResult('🎵 Opening Spotify for music', 'success');
+                speak('Mission complete! Opening Spotify for music. Enjoy!');
+                return;
+            }
+
+            // News
+            if (cmd.includes('news') || cmd.includes('khabar')) {
+                window.open('https://news.google.com', '_blank');
+                addResult('📰 Opening Google News', 'success');
+                speak('Mission complete! Latest news dekho Google News mein!');
+                return;
+            }
+
+            // Calculator
+            if (cmd.includes('calculate') || cmd.includes('math') || cmd.includes('plus') || cmd.includes('minus') || 
+                cmd.includes('multiply') || cmd.includes('divide') || /\d+\s*[\+\-\*\/]\s*\d+/.test(cmd)) {
+                
+                try {
+                    // Extract math expression
+                    const mathExpr = cmd.match(/\d+\s*[\+\-\*\/\×÷]\s*\d+/);
+                    if (mathExpr) {
+                        let expr = mathExpr[0].replace('×', '*').replace('÷', '/');
+                        let result = eval(expr);
+                        addResult(`🧮 ${expr} = ${result}`, 'info');
+                        speak(`The answer is ${result}`);
+                    } else {
+                        speak('Math expression samajh nahi aaya. Example: calculate 25 plus 8');
+                    }
+                } catch (error) {
+                    speak('Math calculation mein error aa gaya');
+                }
+                return;
+            }
+
+            // Timer (mock)
+            if (cmd.includes('timer') || cmd.includes('set timer')) {
+                const minutes = cmd.match(/\d+/) ? cmd.match(/\d+/)[0] : '5';
+                addResult(`⏱️ Timer set for ${minutes} minutes (mock)`, 'info');
+                speak(`Timer set kar diya ${minutes} minutes ke liye!`);
+                return;
+            }
+
+            // Reminder (mock)
+            if (cmd.includes('remind') || cmd.includes('reminder')) {
+                const task = cmd.replace(/(remind me to|reminder|remind)/g, '').trim();
+                addResult(`🔔 Reminder: ${task || 'Important task'} (mock)`, 'info');
+                speak(`Reminder set kar diya! Main tumhe yaad dilaunga`);
+                return;
+            }
+
+            // Messages
+            if (cmd.includes('message') || cmd.includes('send') || cmd.includes('whatsapp')) {
                 handleMessage(cmd);
+                return;
             }
-            // Default
-            else {
-                addResult('❓ Command not recognized. Try: search, open, background, time, message', 'info');
+
+            // Email (mock)
+            if (cmd.includes('email') || cmd.includes('mail')) {
+                window.open('https://gmail.com', '_blank');
+                addResult('📧 Opening Gmail', 'success');
+                speak('Mission complete! Gmail khol diya email ke liye!');
+                return;
             }
+
+            // Smart home commands
+            if (cmd.includes('turn on') || cmd.includes('turn off') || cmd.includes('switch')) {
+                handleSmartHome(cmd);
+                return;
+            }
+
+            // Shopping list (mock)
+            if (cmd.includes('shopping') || cmd.includes('list') || cmd.includes('add to list')) {
+                const item = cmd.replace(/(add to shopping list|shopping list|list|add)/g, '').trim();
+                addResult(`🛒 Added to shopping list: ${item || 'item'} (mock)`, 'success');
+                speak(`Shopping list mein add kar diya ${item || 'item'}!`);
+                return;
+            }
+
+            // Volume control
+            if (cmd.includes('volume up') || cmd.includes('increase volume')) {
+                assistantVolume = Math.min(1, assistantVolume + 0.2);
+                updateVolumeDisplay();
+                speak('Volume increased!');
+                return;
+            }
+
+            if (cmd.includes('volume down') || cmd.includes('decrease volume')) {
+                assistantVolume = Math.max(0, assistantVolume - 0.2);
+                updateVolumeDisplay();
+                speak('Volume decreased!');
+                return;
+            }
+
+            if (cmd.includes('mute') || cmd.includes('silent')) {
+                isMuted = !isMuted;
+                muteToggle.textContent = isMuted ? '🔇' : '🔊';
+                addResult(`🔇 Assistant ${isMuted ? 'muted' : 'unmuted'}`, 'info');
+                if (!isMuted) speak('Unmuted! Ab main bol sakta hun!');
+                return;
+            }
+
+            // Stories
+            if (cmd.includes('story') || cmd.includes('tell me story') || cmd.includes('kahani')) {
+                const stories = [
+                    "Once upon a time, there was a smart assistant who could talk to humans. The assistant was very helpful and made everyone's life easier!",
+                    "Ek baar ki baat hai, ek robot tha jo insanon ki madad karta tha. Woh bohot intelligent tha aur sab usse pyaar karte the!",
+                    "There was a magical voice in the computer that could understand any language and help with any task. People called it the best assistant ever!"
+                ];
+                const story = stories[Math.floor(Math.random() * stories.length)];
+                addResult('📖 Story time!', 'info');
+                speak(story);
+                return;
+            }
+
+            // Singing
+            if (cmd.includes('sing') || cmd.includes('song') || cmd.includes('gaana')) {
+                const songs = [
+                    "Twinkle twinkle little star, how I wonder what you are! La la la!",
+                    "Happy birthday to you, happy birthday to you! Celebrate karo!",
+                    "Do re mi fa so la ti do! Main ek singing assistant hun!"
+                ];
+                const song = songs[Math.floor(Math.random() * songs.length)];
+                addResult('🎤 Assistant singing!', 'info');
+                speak(song);
+                return;
+            }
+
+            // Stop commands
+            if (cmd.includes('stop') || cmd.includes('quit') || cmd.includes('bye') || cmd.includes('goodbye')) {
+                stopListening();
+                speak('Goodbye! Main jaa raha hun. Agar zarurat ho to wapas bulana!');
+                return;
+            }
+
+            // Default unknown command
+            const response = getRandomResponse('unknown');
+            speak(response);
         }
 
-        // Handle message command
+        // Handle Message Command
         function handleMessage(cmd) {
-            // Extract name and message
-            let name = 'unknown';
-            let message = 'hello';
+            let name = 'Friend';
+            let message = 'Hello!';
             
-            if (cmd.includes('ritika')) {
-                name = 'Ritika';
-            }
+            // Extract name
+            if (cmd.includes('ritika')) name = 'Ritika';
+            else if (cmd.includes('john')) name = 'John';
+            else if (cmd.includes('mom')) name = 'Mom';
+            else if (cmd.includes('dad')) name = 'Dad';
             
-            // Try to extract message after name
-            const parts = cmd.split(/message|send/);
+            // Extract message
+            const parts = cmd.split(/message|send|to|\-/);
             if (parts.length > 1) {
-                const rest = parts[1].trim();
-                const words = rest.split(' ');
-                if (words.length > 1) {
-                    name = words[0];
-                    message = words.slice(1).join(' ');
+                const lastPart = parts[parts.length - 1].trim();
+                if (lastPart && lastPart !== name.toLowerCase()) {
+                    message = lastPart;
                 }
             }
             
-            // Open WhatsApp with message
             const whatsappUrl = `https://web.whatsapp.com/send?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
-            addResult(`💬 Opening WhatsApp to send "${message}" to ${name}`, 'action');
+            addResult(`💬 WhatsApp: "${message}" for ${name}`, 'success');
+            
+            const response = getRandomResponse('message_responses');
+            speak(response);
         }
 
-        // Change background
+        // Handle Smart Home Commands
+        function handleSmartHome(cmd) {
+            const devices = {
+                'light': 'lights',
+                'lights': 'lights', 
+                'fan': 'fan',
+                'tv': 'TV',
+                'music': 'music system',
+                'ac': 'air conditioner',
+                'air conditioner': 'air conditioner'
+            };
+            
+            const action = cmd.includes('turn on') || cmd.includes('switch on') ? 'on' : 'off';
+            let deviceFound = false;
+            
+            for (const [key, device] of Object.entries(devices)) {
+                if (cmd.includes(key)) {
+                    addResult(`💡 Mock: Turned ${action} ${device}`, 'success');
+                    speak(`Mission complete! ${device} ${action} kar diya!`);
+                    deviceFound = true;
+                    break;
+                }
+            }
+            
+            if (!deviceFound) {
+                addResult(`💡 Mock: Smart device turned ${action}`, 'success');
+                speak(`Smart device ${action} kar diya!`);
+            }
+        }
+
+        // Change Background
         function changeBackground() {
-            const colors = [
-                'bg-gradient-to-br from-purple-400 to-pink-400',
-                'bg-gradient-to-br from-blue-400 to-indigo-500',
-                'bg-gradient-to-br from-green-400 to-teal-500',
-                'bg-gradient-to-br from-yellow-400 to-orange-400',
-                'bg-gradient-to-br from-red-400 to-pink-400'
+            const gradients = [
+                'bg-gradient-to-br from-purple-400 via-pink-500 to-red-500',
+                'bg-gradient-to-br from-blue-400 via-purple-500 to-pink-500',
+                'bg-gradient-to-br from-green-400 via-blue-500 to-purple-600',
+                'bg-gradient-to-br from-yellow-400 via-red-500 to-pink-500',
+                'bg-gradient-to-br from-indigo-400 via-purple-500 to-pink-500',
+                'bg-gradient-to-br from-teal-400 via-blue-500 to-purple-600',
+                'bg-gradient-to-br from-pink-400 via-purple-500 to-indigo-500'
             ];
             
-            // Remove existing background
-            body.className = 'min-h-screen transition-all duration-500';
-            
-            // Add random color
-            const randomColor = colors[Math.floor(Math.random() * colors.length)];
-            body.className += ' ' + randomColor;
+            body.className = 'min-h-screen transition-all duration-1000';
+            const randomGradient = gradients[Math.floor(Math.random() * gradients.length)];
+            body.className += ' ' + randomGradient;
         }
 
-        // Add result to display
+        // Add Result
         function addResult(message, type = 'info') {
             const time = new Date().toLocaleTimeString();
             const div = document.createElement('div');
             
-            let bgColor = 'bg-blue-50 border-blue-200';
-            if (type === 'action') bgColor = 'bg-green-50 border-green-200';
-            if (type === 'error') bgColor = 'bg-red-50 border-red-200';
-            if (type === 'speech') bgColor = 'bg-purple-50 border-purple-200';
+            let bgColor = 'bg-blue-50 border-blue-200 text-blue-800';
+            if (type === 'success') bgColor = 'bg-green-50 border-green-200 text-green-800';
+            if (type === 'error') bgColor = 'bg-red-50 border-red-200 text-red-800';
+            if (type === 'user') bgColor = 'bg-purple-50 border-purple-200 text-purple-800';
+            if (type === 'assistant') bgColor = 'bg-cyan-50 border-cyan-200 text-cyan-800';
             
-            div.className = `p-3 rounded border ${bgColor}`;
+            div.className = `p-4 rounded-lg border ${bgColor} transition-all duration-300`;
             div.innerHTML = `
-                <div class="flex justify-between">
-                    <span>${message}</span>
-                    <span class="text-xs text-gray-500">${time}</span>
+                <div class="flex justify-between items-start">
+                    <div class="font-medium">${message}</div>
+                    <div class="text-xs opacity-70">${time}</div>
                 </div>
             `;
 
-            // Clear placeholder
             if (results.querySelector('.text-gray-500.italic')) {
                 results.innerHTML = '';
             }
 
             results.insertBefore(div, results.firstChild);
 
-            // Keep only last 8 results
-            while (results.children.length > 8) {
+            while (results.children.length > 12) {
                 results.removeChild(results.lastChild);
             }
         }
 
-        // Update UI based on listening state
-        function updateUI() {
+        // Update Volume Display
+        function updateVolumeDisplay() {
+            volumeControl.value = assistantVolume;
+            volumeDisplay.textContent = Math.round(assistantVolume * 100) + '%';
+        }
+
+        // Update Voice UI
+        function updateVoiceUI() {
             if (isListening) {
-                statusText.textContent = 'Listening... Speak now!';
-                statusText.className = 'mt-3 text-lg font-semibold text-green-600';
-                micButton.className = 'w-24 h-24 bg-green-500 text-white rounded-full text-4xl transition-all duration-300 mx-auto block listening';
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-                waveAnimation.classList.remove('hidden');
+                voiceStatus.textContent = 'Listening... Bol raha hun!';
+                voiceStatus.className = 'mt-3 text-lg font-semibold text-green-600';
+                micButton.className = 'w-20 h-20 text-white rounded-full text-3xl transition-all duration-300 mx-auto block listening';
+                startVoice.disabled = true;
+                stopVoice.disabled = false;
+                waveContainer.classList.remove('hidden');
             } else {
-                statusText.textContent = 'Click microphone to start';
-                statusText.className = 'mt-3 text-lg font-semibold text-gray-700';
-                micButton.className = 'w-24 h-24 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-4xl transition-all duration-300 mx-auto block';
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-                waveAnimation.classList.add('hidden');
+                voiceStatus.textContent = 'Ready to listen';
+                voiceStatus.className = 'mt-3 text-lg font-semibold text-gray-700';
+                micButton.className = 'w-20 h-20 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-3xl transition-all duration-300 mx-auto block';
+                startVoice.disabled = false;
+                stopVoice.disabled = true;
+                waveContainer.classList.add('hidden');
             }
         }
 
-        // Start listening
+        // Voice Controls
         function startListening() {
             if (!isSupported) {
-                addResult('❌ Speech recognition not supported', 'error');
+                addResult('❌ Browser speech recognition support nahi karta', 'error');
+                speak('Browser speech recognition support nahi karta');
                 return;
             }
 
             if (!recognition) {
-                if (!initSpeechRecognition()) {
-                    return;
-                }
+                if (!initSpeechRecognition()) return;
             }
 
             if (!isListening) {
                 try {
-                    speechText.textContent = 'Starting...';
                     recognition.start();
+                    console.log('🎤 Starting to listen...');
                 } catch (error) {
-                    console.error('Start error:', error);
-                    addResult('❌ Error starting: ' + error.message, 'error');
+                    console.error('❌ Start error:', error);
+                    addResult(`❌ Start error: ${error.message}`, 'error');
                 }
             }
         }
 
-        // Stop listening
         function stopListening() {
             if (recognition && isListening) {
                 recognition.stop();
+                console.log('🛑 Stopping listener...');
             }
         }
 
-        // Test function
-        function testFunction() {
-            addResult('🧪 Test: Voice assistant is working!', 'info');
-            changeBackground();
-        }
-
-        // Event listeners
+        // Event Listeners
         micButton.addEventListener('click', () => {
             if (isListening) {
                 stopListening();
@@ -461,42 +1056,89 @@
             }
         });
 
-        startBtn.addEventListener('click', startListening);
-        stopBtn.addEventListener('click', stopListening);
-        testBtn.addEventListener('click', testFunction);
+        startVoice.addEventListener('click', startListening);
+        stopVoice.addEventListener('click', stopListening);
 
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('Page loaded, initializing...');
-            
-            // Check support
-            if (checkBrowserSupport()) {
-                // Initialize recognition
-                setTimeout(() => {
-                    initSpeechRecognition();
-                }, 500);
-            }
-            
-            addResult('🚀 Voice Assistant loaded! Click microphone to start.', 'info');
+        // Test Speech
+        testSpeech.addEventListener('click', () => {
+            speak('Hello! Main tumhara voice assistant hun! Test successful!');
         });
 
-        // Request microphone permission on first user interaction
-        document.addEventListener('click', function requestMicPermission() {
-            if (isSupported && !recognition) {
+        // Volume Controls
+        volumeControl.addEventListener('input', (e) => {
+            assistantVolume = parseFloat(e.target.value);
+            updateVolumeDisplay();
+        });
+
+        muteToggle.addEventListener('click', () => {
+            isMuted = !isMuted;
+            muteToggle.textContent = isMuted ? '🔇' : '🔊';
+            addResult(`🔇 Assistant ${isMuted ? 'muted' : 'unmuted'}`, 'info');
+        });
+
+        // Text Input Events
+        sendText.addEventListener('click', () => {
+            const text = textInput.value.trim();
+            if (text) {
+                processCommand(text);
+                textInput.value = '';
+            }
+        });
+
+        textInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendText.click();
+            }
+        });
+
+        // Clear Results
+        clearResults.addEventListener('click', () => {
+            results.innerHTML = `
+                <div class="text-gray-500 italic text-center py-6">
+                    <div class="text-lg mb-3">Results cleared!</div>
+                    <div class="text-sm">Ready for new commands...</div>
+                </div>
+            `;
+            transcriptText.textContent = 'Click microphone and speak...';
+            responseText.textContent = 'Main ready hun! Kuch pucho...';
+            currentTranscript = '';
+            speak('Results clear kar diye! Kya karna hai ab?');
+        });
+
+        // Initialize App
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Talking Assistant loading...');
+            
+            // Load voices
+            if (synthesis.onvoiceschanged !== undefined) {
+                synthesis.onvoiceschanged = () => {
+                    console.log('Voices loaded');
+                };
+            }
+            
+            // Check browser support
+            if (checkBrowserSupport()) {
                 navigator.mediaDevices.getUserMedia({ audio: true })
                     .then(() => {
-                        console.log('Microphone permission granted');
-                        debugInfo.textContent = '✅ Microphone permission granted!';
+                        console.log('🎤 Microphone permission granted');
+                        debugStatus.textContent = '✅ Ready! Microphone permission granted.';
+                        debugStatus.className = 'text-green-600';
+                        initSpeechRecognition();
+                        
+                        // Welcome message
+                        setTimeout(() => {
+                            speak('Hello! Main tumhara talking voice assistant hun! Ready to help!');
+                        }, 1000);
                     })
                     .catch((error) => {
-                        console.error('Microphone permission denied:', error);
-                        debugInfo.textContent = '❌ Microphone permission needed for voice recognition';
-                        debugInfo.className = 'text-sm text-red-600';
+                        console.error('❌ Microphone permission denied:', error);
+                        debugStatus.textContent = '❌ Microphone permission needed';
+                        debugStatus.className = 'text-red-600';
                     });
-                
-                // Remove this listener after first attempt
-                document.removeEventListener('click', requestMicPermission);
             }
+
+            addResult('🚀 Talking Voice Assistant loaded! Try saying "Hello" or "What can you do?"', 'info');
+            updateVolumeDisplay();
         });
     </script>
 </body>
